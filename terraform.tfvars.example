@@ -1,0 +1,7 @@
+aws_region        = "us-east-1"
+project_name      = "university-enrollment"
+db_password       = "ChangeMe123!"
+ses_sender_email  = "verified-sender@example.com"
+
+# Opcionalmente reemplaza AZs si tu cuenta no expone us-east-1a/us-east-1b
+# availability_zones = ["us-east-1a", "us-east-1b"]

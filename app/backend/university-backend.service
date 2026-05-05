@@ -1,0 +1,13 @@
+[Unit]
+Description=University Enrollment Backend
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/university/app
+ExecStart=/usr/local/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 app:app
+Restart=always
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

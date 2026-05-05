@@ -1,0 +1,10 @@
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+lambda/build/
+lambda/lambda.zip
+__pycache__/
+*.pyc
+scripts/deployment-output.json

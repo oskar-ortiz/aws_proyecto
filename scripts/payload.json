@@ -1,0 +1,6 @@
+{
+  "enrollment_id": 1,
+  "student_email": "verified-recipient@example.com",
+  "student_name": "Ana Perez",
+  "course_code": "CS101"
+}
