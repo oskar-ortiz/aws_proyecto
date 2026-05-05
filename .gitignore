@@ -8,3 +8,4 @@ lambda/lambda.zip
 __pycache__/
 *.pyc
 scripts/deployment-output.json
+node_modules/

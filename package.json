@@ -1,0 +1,12 @@
+{
+  "name": "aws-proyecto-presentation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:presentation": "node scripts/build_project_presentation.mjs"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}
