@@ -97,15 +97,28 @@ def _response(status_code, body):
     }
 
 
-def lambda_handler(event, context):
-    del context
-    body = event.get("body") or "{}"
+def _parse_payload(event):
+    body = event.get("body")
+    if body is None:
+        return event
+
     if event.get("isBase64Encoded"):
         import base64
 
         body = base64.b64decode(body).decode("utf-8")
 
-    payload = json.loads(body)
+    if isinstance(body, str):
+        return json.loads(body or "{}")
+
+    if isinstance(body, dict):
+        return body
+
+    raise ValueError("Unsupported event body format")
+
+
+def lambda_handler(event, context):
+    del context
+    payload = _parse_payload(event)
 
     enrollment_id = payload.get("enrollment_id")
     recipient_email = payload.get("student_email")
