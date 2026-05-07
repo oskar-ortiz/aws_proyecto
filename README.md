@@ -84,7 +84,13 @@ Proyecto base para desplegar una plataforma de matricula universitaria altamente
 .\scripts\package_lambda.ps1
 ```
 
-2. Ejecuta el despliegue completo:
+2. Si la infraestructura ya existe y solo quieres subir cambios al codigo de Lambda:
+
+```powershell
+.\scripts\aws_cli_update_lambda_code.ps1
+```
+
+3. Ejecuta el despliegue completo:
 
 ```powershell
 .\scripts\aws_cli_deploy.ps1 `
@@ -93,13 +99,13 @@ Proyecto base para desplegar una plataforma de matricula universitaria altamente
   -DbPassword "ChangeMe123!"
 ```
 
-3. Verifica el flujo de aplicación:
+4. Verifica el flujo de aplicación:
 
 ```powershell
 .\scripts\aws_cli_verify.ps1 -StudentEmail "destinatario-verificado@dominio.com"
 ```
 
-4. Ejecuta failover controlado:
+5. Ejecuta failover controlado:
 
 ```powershell
 .\scripts\aws_cli_failover_test.ps1
