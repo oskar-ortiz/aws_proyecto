@@ -7,6 +7,9 @@ import boto3
 from botocore.exceptions import ClientError
 
 ses = boto3.client("ses")
+DEFAULT_TEST_RECIPIENT = "a70310794@gmail.com"
+DEFAULT_TEST_STUDENT_NAME = "Ana Perez"
+DEFAULT_TEST_COURSE_CODE = "CS101"
 
 
 def _load_pymysql():
@@ -100,7 +103,7 @@ def _response(status_code, body):
 def _parse_payload(event):
     body = event.get("body")
     if body is None:
-        return event
+        return event if event else {}
 
     if event.get("isBase64Encoded"):
         import base64
@@ -116,9 +119,28 @@ def _parse_payload(event):
     raise ValueError("Unsupported event body format")
 
 
+def _normalize_payload(payload):
+    normalized = dict(payload or {})
+    if normalized:
+        return normalized
+
+    # Allow the AWS Lambda console's default empty test event to succeed
+    # without affecting normal ALB/API requests that include a payload.
+    return {
+        "enrollment_id": 1,
+        "student_email": os.environ.get("DEFAULT_TEST_EMAIL", DEFAULT_TEST_RECIPIENT),
+        "student_name": os.environ.get(
+            "DEFAULT_TEST_STUDENT_NAME", DEFAULT_TEST_STUDENT_NAME
+        ),
+        "course_code": os.environ.get(
+            "DEFAULT_TEST_COURSE_CODE", DEFAULT_TEST_COURSE_CODE
+        ),
+    }
+
+
 def lambda_handler(event, context):
     del context
-    payload = _parse_payload(event)
+    payload = _normalize_payload(_parse_payload(event))
 
     enrollment_id = payload.get("enrollment_id")
     recipient_email = payload.get("student_email")
