@@ -57,6 +57,10 @@ resource "null_resource" "build_lambda_package" {
       python -m pip install --upgrade pip >NUL
       python -m pip install -r "${var.lambda_source_dir}\\requirements.txt" -t build
       copy "${var.lambda_source_dir}\\app.py" build\\app.py >NUL
+      if not exist build\\pymysql\\__init__.py (
+        echo PyMySQL dependency was not packaged into the Lambda bundle.
+        exit /b 1
+      )
     EOT
     interpreter = ["cmd", "/C"]
     working_dir = var.lambda_source_dir

@@ -4,13 +4,24 @@ import time
 from contextlib import closing
 
 import boto3
-import pymysql
 from botocore.exceptions import ClientError
 
 ses = boto3.client("ses")
 
 
+def _load_pymysql():
+    try:
+        import pymysql
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "PyMySQL is not available in the Lambda package. Rebuild and redeploy the function bundle."
+        ) from exc
+
+    return pymysql
+
+
 def _connect():
+    pymysql = _load_pymysql()
     return pymysql.connect(
         host=os.environ["DB_HOST"],
         user=os.environ["DB_USER"],
@@ -125,12 +136,22 @@ def lambda_handler(event, context):
                 continue
             break
 
-    _store_failure(enrollment_id, recipient_email, last_error or "Unknown error")
+    failure_logged = True
+    failure_log_error = None
+    try:
+        _store_failure(enrollment_id, recipient_email, last_error or "Unknown error")
+    except Exception as exc:
+        failure_logged = False
+        failure_log_error = str(exc)
+        print(f"Unable to persist email failure: {failure_log_error}")
+
     return _response(
         500,
         {
             "message": "Email delivery failed after retries",
             "attempts": max_retries,
             "error": last_error,
+            "failure_logged": failure_logged,
+            "failure_log_error": failure_log_error,
         },
     )
