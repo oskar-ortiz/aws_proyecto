@@ -63,6 +63,22 @@ resource "aws_lb_listener_rule" "admin" {
   }
 }
 
+resource "aws_lb_listener_rule" "dashboard" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 15
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.ec2.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/dashboard", "/dashboard/*"]
+    }
+  }
+}
+
 resource "aws_lb_listener_rule" "api_lambda" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 20

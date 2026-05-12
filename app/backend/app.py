@@ -126,6 +126,36 @@ def list_enrollments():
     return jsonify({"items": rows, "source": "read-replica"}), 200
 
 
+def _int_env(var_name: str, default: int) -> int:
+    raw = os.getenv(var_name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+@app.get("/admin/dashboard-context")
+def dashboard_context():
+    """Read-only metadata for the /dashboard UI (no secrets)."""
+    return (
+        jsonify(
+            {
+                "region": os.getenv("AWS_REGION", "us-east-1"),
+                "ses_sender": os.getenv("SES_SENDER_EMAIL", ""),
+                "db_write_host": os.getenv("DB_WRITE_HOST", ""),
+                "db_read_host": os.getenv("DB_READ_HOST", ""),
+                "db_name": os.getenv("DB_NAME", ""),
+                "asg_min": _int_env("ASG_MIN_SIZE", 2),
+                "asg_max": _int_env("ASG_MAX_SIZE", 6),
+                "asg_desired": _int_env("ASG_DESIRED_CAPACITY", 2),
+            }
+        ),
+        200,
+    )
+
+
 if __name__ == "__main__":
     ensure_schema()
     app.run(host="0.0.0.0", port=int(os.getenv("APP_PORT", "8000")))
