@@ -66,6 +66,56 @@ Proyecto base para desplegar una plataforma de matricula universitaria altamente
               +-----------------------------+
 ```
 
+## Architecture & Cloud Topology
+
+```mermaid
+flowchart TD
+    Internet[Internet / End Users] -->|HTTP/HTTPS| ALB[Application Load Balancer
+ALB / path-based routing
+Public entry point]
+
+    ALB -->|/admin/*| EC2[EC2 Fleet
+Private subnets
+NGINX + Flask API]
+    ALB -->|/api/*| Lambda[Lambda Function
+Triggered by ALB
+SES email sender]
+
+    EC2 -->|Read/Write traffic| RDS[(RDS MySQL Multi-AZ
+Primary Instance)]
+    RDS --> Replica[(Read Replica
+Analytics / read traffic)]
+    Lambda -->|Email delivery| SES[Amazon SES
+Verified sender / recipient]
+
+    EC2 -->|Operational metrics| ASG[Auto Scaling Group
+Step Scaling policies]
+    ASG --> EC2
+
+    subgraph VPC[Amazon VPC / Private Network]
+        EC2
+        Lambda
+        RDS
+        Replica
+    end
+```
+
+### Topology Notes
+- The application is exposed to the internet only through the ALB, which acts as the single public ingress point.
+- Route-based traffic segmentation is enforced with path-based rules: `/admin/*` routes to the EC2 backend, while `/api/*` is handled by Lambda.
+- The Flask + NGINX backend runs in private subnets, reducing direct exposure to the internet and improving security posture.
+- RDS MySQL is deployed in Multi-AZ mode for availability, with a read replica to offload query traffic.
+- SES handles email notifications, while Lambda performs the integration logic following the event triggered by the ALB.
+- Auto Scaling and Step Scaling provide elastic capacity response under varying demand without redesigning the solution.
+
+### Architecture Summary
+- Public edge: `Internet -> ALB`
+- App tier: `ALB -> EC2 / Lambda`
+- Data tier: `EC2 -> RDS Primary -> Read Replica`
+- Messaging / notifications: `ALB -> Lambda -> SES`
+- Scalability: `Auto Scaling Group + Step Scaling`
+- Resilience: `Multi-AZ RDS + private subnet design`
+
 ## Flujo funcional
 
 1. Cliente o panel admin llama `POST /admin/enrollments`.
@@ -152,11 +202,11 @@ chmod +x scripts/load_test.sh
 
 ### Failover en RDS Multi-AZ
 
-RDS mantiene una instancia standby sincronizada en otra AZ. Si la primaria falla por problema de infraestructura, almacenamiento o AZ, AWS promueve automaticamente la standby y actualiza el endpoint writer para que la aplicacion siga usando el mismo hostname principal.
+RDS mantiene una instancia standby sincronizada en otra AZ. Si la primaria falla por problema de infraestructura, almacenamiento o AZ, AWS promueve automaticamente la standby y actualiza el endpoint. El cliente no ve un corte funcional relevante, y la escritura se restaura sin intervención directa.
 
 ### Como funciona ALB con Lambda
 
-El ALB no abre una conexion TCP hacia Lambda. En lugar de eso, cuando una regla del listener coincide con `/api/*`, el ALB transforma la solicitud HTTP en un evento JSON e invoca la funcion Lambda registrada en el target group de tipo `lambda`. La respuesta de Lambda se devuelve como respuesta HTTP del ALB.
+El ALB no abre una conexion TCP hacia Lambda. En lugar de eso, cuando una regla del listener coincide con `/api/*`, el ALB transforma la solicitud HTTP en un evento JSON e invoca la funcion Lambda de forma gestionada. Esto permite un modelo serverless para procesamiento de correo sin crear infraestructura adicional de entrada.
 
 ## Notas operativas
 
