@@ -9,6 +9,53 @@ Proyecto base para desplegar una plataforma de matricula universitaria altamente
 - SES para correos de confirmacion
 - Auto Scaling Group con Step Scaling
 
+## Portfolio & Author
+
+- Portfolio: https://oskar-ortiz.vercel.app
+- GitHub: https://github.com/oskar-ortiz
+- This solution represents a cloud-native reference architecture addressing elasticity, secure edge routing, asynchronous messaging, and resilient data access patterns for a multi-tier enrollment platform.
+
+## Enterprise Architecture Overview
+
+```mermaid
+flowchart TD
+    Internet[Internet / End Users] -->|HTTP/HTTPS| ALB[Application Load Balancer
+ALB / path-based routing
+Public entry point]
+
+    ALB -->|/admin/*| EC2[EC2 Fleet
+Private subnets
+NGINX + Flask API]
+    ALB -->|/api/*| Lambda[Lambda Function
+Triggered by ALB
+SES email sender]
+
+    EC2 -->|Read/Write traffic| RDS[(RDS MySQL Multi-AZ
+Primary Instance)]
+    RDS --> Replica[(Read Replica
+Analytics / read traffic)]
+    Lambda -->|Email delivery| SES[Amazon SES
+Verified sender / recipient]
+
+    EC2 -->|Operational metrics| ASG[Auto Scaling Group
+Step Scaling policies]
+    ASG --> EC2
+
+    subgraph VPC[Amazon VPC / Private Network]
+        EC2
+        Lambda
+        RDS
+        Replica
+    end
+```
+
+### Design Principles
+- Public ingress is centralized through the Application Load Balancer.
+- The application layer remains private and horizontally scalable in the VPC.
+- Path-based routing separates transactional and serverless workloads cleanly.
+- Data durability and availability are anchored in Multi-AZ RDS with a read replica strategy.
+- This design reflects modern AWS operating patterns for secure, resilient, and scalable service delivery.
+
 ## Estructura
 
 ```text
@@ -202,7 +249,7 @@ chmod +x scripts/load_test.sh
 
 ### Failover en RDS Multi-AZ
 
-RDS mantiene una instancia standby sincronizada en otra AZ. Si la primaria falla por problema de infraestructura, almacenamiento o AZ, AWS promueve automaticamente la standby y actualiza el endpoint. El cliente no ve un corte funcional relevante, y la escritura se restaura sin intervención directa.
+RDS mantiene una instancia standby sincronizada en otra AZ. Si la primaria falla por problema de infraestructura, almacenamiento o AZ, AWS promueve automáticamente la standby y actualiza el endpoint. El cliente no ve un corte funcional relevante, y la escritura se restaura sin intervención directa.
 
 ### Como funciona ALB con Lambda
 
