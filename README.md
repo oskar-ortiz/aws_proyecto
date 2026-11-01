@@ -1,47 +1,29 @@
-# Sistema de Matricula Universitaria en AWS
+# Sistema de matrícula universitaria en AWS
 
-Proyecto base para desplegar una plataforma de matricula universitaria altamente disponible con:
+Proyecto base para desplegar una plataforma de matrícula universitaria altamente disponible con una arquitectura orientada a resiliencia, segmentación de tráfico, integración serverless y acceso de datos con alta disponibilidad.
 
-- EC2 con NGINX + backend Flask
-- ALB con path-based routing
-- Lambda integrada directamente con ALB
-- RDS MySQL Multi-AZ + Read Replica
-- SES para correos de confirmacion
-- Auto Scaling Group con Step Scaling
-
-## Portfolio & Author
+## Autoría y portafolio
 
 - Portfolio: https://oskar-ortiz.vercel.app
 - GitHub: https://github.com/oskar-ortiz
-- This solution represents a cloud-native reference architecture addressing elasticity, secure edge routing, asynchronous messaging, and resilient data access patterns for a multi-tier enrollment platform.
 
-## Enterprise Architecture Overview
+## Visión arquitectónica empresarial
 
 ```mermaid
 flowchart TD
-    Internet[Internet / End Users] -->|HTTP/HTTPS| ALB[Application Load Balancer
-ALB / path-based routing
-Public entry point]
+    Internet[Internet / Usuarios finales] -->|HTTP/HTTPS| ALB[Application Load Balancer<br/>Routing por path<br/>Punto de entrada público]
 
-    ALB -->|/admin/*| EC2[EC2 Fleet
-Private subnets
-NGINX + Flask API]
-    ALB -->|/api/*| Lambda[Lambda Function
-Triggered by ALB
-SES email sender]
+    ALB -->|/admin/*| EC2[EC2 Fleet<br/>Subredes privadas<br/>NGINX + Flask API]
+    ALB -->|/api/*| Lambda[Lambda Function<br/>Invocada por ALB<br/>SES email sender]
 
-    EC2 -->|Read/Write traffic| RDS[(RDS MySQL Multi-AZ
-Primary Instance)]
-    RDS --> Replica[(Read Replica
-Analytics / read traffic)]
-    Lambda -->|Email delivery| SES[Amazon SES
-Verified sender / recipient]
+    EC2 -->|Lectura/Escritura| RDS[(RDS MySQL Multi-AZ<br/>Instancia primaria)]
+    RDS --> Replica[(Read Replica<br/>Consultas analíticas / lectura)]
+    Lambda -->|Entrega de correos| SES[Amazon SES<br/>Remitente verificado]
 
-    EC2 -->|Operational metrics| ASG[Auto Scaling Group
-Step Scaling policies]
+    EC2 -->|Métricas operativas| ASG[Auto Scaling Group<br/>Policies Step Scaling]
     ASG --> EC2
 
-    subgraph VPC[Amazon VPC / Private Network]
+    subgraph VPC[Amazon VPC / Red privada]
         EC2
         Lambda
         RDS
@@ -49,14 +31,14 @@ Step Scaling policies]
     end
 ```
 
-### Design Principles
-- Public ingress is centralized through the Application Load Balancer.
-- The application layer remains private and horizontally scalable in the VPC.
-- Path-based routing separates transactional and serverless workloads cleanly.
-- Data durability and availability are anchored in Multi-AZ RDS with a read replica strategy.
-- This design reflects modern AWS operating patterns for secure, resilient, and scalable service delivery.
+### Principios de diseño
+- La entrada pública queda centralizada en el Application Load Balancer.
+- La capa de aplicación permanece privada y escalable dentro de la VPC.
+- El routing por path separa claramente cargas transaccionales y workloads serverless.
+- La durabilidad y la disponibilidad se apoyan en RDS Multi-AZ con estrategia de read replica.
+- La solución refleja patrones modernos de AWS para despliegue seguro, resiliente y escalable.
 
-## Estructura
+## Estructura del repositorio
 
 ```text
 .
@@ -76,101 +58,14 @@ Step Scaling policies]
 `-- outputs.tf
 ```
 
-## Diagrama ASCII
-
-```text
-                        Internet
-                            |
-                            v
-                  +----------------------+
-                  |   Application LB     |
-                  |  path-based routing  |
-                  +----------------------+
-                   |                  |
-        /admin/* ->|                  |-> /api/*
-                   v                  v
-      +--------------------+   +-------------------+
-      | Target Group EC2   |   | Target Group      |
-      | Auto Scaling Group |   | Lambda            |
-      +--------------------+   +-------------------+
-               |                          |
-               v                          v
-      +--------------------+     +------------------+
-      | EC2 private subnets|     | Lambda in VPC    |
-      | NGINX + Flask app  |     | SES email sender |
-      +--------------------+     +------------------+
-               |                          |
-               +------------+-------------+
-                            |
-                            v
-              +-----------------------------+
-              | RDS MySQL Multi-AZ Primary |
-              +-----------------------------+
-                            |
-                            v
-              +-----------------------------+
-              | Read Replica for queries   |
-              +-----------------------------+
-```
-
-## Architecture & Cloud Topology
-
-```mermaid
-flowchart TD
-    Internet[Internet / End Users] -->|HTTP/HTTPS| ALB[Application Load Balancer
-ALB / path-based routing
-Public entry point]
-
-    ALB -->|/admin/*| EC2[EC2 Fleet
-Private subnets
-NGINX + Flask API]
-    ALB -->|/api/*| Lambda[Lambda Function
-Triggered by ALB
-SES email sender]
-
-    EC2 -->|Read/Write traffic| RDS[(RDS MySQL Multi-AZ
-Primary Instance)]
-    RDS --> Replica[(Read Replica
-Analytics / read traffic)]
-    Lambda -->|Email delivery| SES[Amazon SES
-Verified sender / recipient]
-
-    EC2 -->|Operational metrics| ASG[Auto Scaling Group
-Step Scaling policies]
-    ASG --> EC2
-
-    subgraph VPC[Amazon VPC / Private Network]
-        EC2
-        Lambda
-        RDS
-        Replica
-    end
-```
-
-### Topology Notes
-- The application is exposed to the internet only through the ALB, which acts as the single public ingress point.
-- Route-based traffic segmentation is enforced with path-based rules: `/admin/*` routes to the EC2 backend, while `/api/*` is handled by Lambda.
-- The Flask + NGINX backend runs in private subnets, reducing direct exposure to the internet and improving security posture.
-- RDS MySQL is deployed in Multi-AZ mode for availability, with a read replica to offload query traffic.
-- SES handles email notifications, while Lambda performs the integration logic following the event triggered by the ALB.
-- Auto Scaling and Step Scaling provide elastic capacity response under varying demand without redesigning the solution.
-
-### Architecture Summary
-- Public edge: `Internet -> ALB`
-- App tier: `ALB -> EC2 / Lambda`
-- Data tier: `EC2 -> RDS Primary -> Read Replica`
-- Messaging / notifications: `ALB -> Lambda -> SES`
-- Scalability: `Auto Scaling Group + Step Scaling`
-- Resilience: `Multi-AZ RDS + private subnet design`
-
 ## Flujo funcional
 
 1. Cliente o panel admin llama `POST /admin/enrollments`.
-2. La app en EC2 escribe la matricula en el endpoint writer de RDS.
-3. Consultas `GET /admin/enrollments` leen desde la Read Replica.
+2. La aplicación en EC2 escribe la matrícula en el endpoint writer de RDS.
+3. Las consultas `GET /admin/enrollments` leen desde la Read Replica.
 4. Cliente o proceso externo llama `POST /api/confirm`.
 5. El ALB invoca Lambda directamente.
-6. Lambda envia correo con SES; si falla, reintenta con backoff exponencial hasta 3 veces.
+6. Lambda envía correo con SES; si falla, reintenta con backoff exponencial hasta 3 veces.
 7. Si los 3 intentos fallan, Lambda guarda el error en la tabla `email_failures`.
 
 ## Despliegue CLI con PowerShell
@@ -181,7 +76,7 @@ Step Scaling policies]
 .\scripts\package_lambda.ps1
 ```
 
-2. Si la infraestructura ya existe y solo quieres subir cambios al codigo de Lambda:
+2. Si la infraestructura ya existe y solo quieres subir cambios al código de Lambda:
 
 ```powershell
 .\scripts\aws_cli_update_lambda_code.ps1
@@ -220,7 +115,7 @@ Si prefieres IaC con Terraform, la base también está incluida en este reposito
 - `GET /admin/enrollments`
 - `POST /api/confirm`
 
-Ejemplo de matricula:
+Ejemplo de matrícula:
 
 ```bash
 curl -X POST "http://ALB_DNS/admin/enrollments" \
@@ -245,19 +140,19 @@ chmod +x scripts/load_test.sh
 ./scripts/load_test.sh ALB_DNS
 ```
 
-## Explicacion breve
+## Explicación breve
 
 ### Failover en RDS Multi-AZ
 
-RDS mantiene una instancia standby sincronizada en otra AZ. Si la primaria falla por problema de infraestructura, almacenamiento o AZ, AWS promueve automáticamente la standby y actualiza el endpoint. El cliente no ve un corte funcional relevante, y la escritura se restaura sin intervención directa.
+RDS mantiene una instancia standby sincronizada en otra AZ. Si la primaria falla por un problema de infraestructura, almacenamiento o disponibilidad, AWS promueve automáticamente la standby y actualiza el endpoint. El cliente no percibe un corte funcional relevante y la escritura se restaura sin intervención directa.
 
-### Como funciona ALB con Lambda
+### Cómo funciona ALB con Lambda
 
-El ALB no abre una conexion TCP hacia Lambda. En lugar de eso, cuando una regla del listener coincide con `/api/*`, el ALB transforma la solicitud HTTP en un evento JSON e invoca la funcion Lambda de forma gestionada. Esto permite un modelo serverless para procesamiento de correo sin crear infraestructura adicional de entrada.
+El ALB no abre una conexión TCP hacia Lambda. En su lugar, cuando una regla del listener coincide con `/api/*`, el ALB transforma la solicitud HTTP en un evento JSON e invoca la función Lambda de manera gestionada. Esto permite un modelo serverless para procesamiento de correo sin crear infraestructura adicional en la capa de entrada.
 
 ## Notas operativas
 
 - En sandbox de SES, tanto remitente como destinatario deben estar verificados.
 - El proyecto usa una sola NAT Gateway para simplificar y abaratar; para HA completa de salida, usa una NAT por AZ.
-- La password de RDS se pasa como variable sensible. En produccion, mueve esto a Secrets Manager o SSM Parameter Store.
+- La password de RDS se pasa como variable sensible. En producción, mueve esto a Secrets Manager o SSM Parameter Store.
 - El despliegue CLI guarda evidencia operativa en `scripts/deployment-output.json`.
